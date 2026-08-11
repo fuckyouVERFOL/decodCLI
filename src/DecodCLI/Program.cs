@@ -18,7 +18,7 @@ public class Program
             var flag = args[i].ToLowerInvariant();
             if (flag is "--version" or "-v")
             {
-                Console.WriteLine("decodCLI v1.0.3");
+                Console.WriteLine("decodCLI v1.0.4");
                 return;
             }
             if (flag is "--help" or "-h")
@@ -57,8 +57,8 @@ public class Program
         if (configuredCount == 0 && providerPool.ActiveProvider.Name == "Ollama")
         {
             AnsiConsole.MarkupLine("[yellow]Notice: Active provider is local Ollama. Cloud API keys are unconfigured.[/]");
-            AnsiConsole.MarkupLine("[dim]To pull and run local PC models (e.g. Qwen 2.5), use [white]/models pull qwen2.5-coder:7b[/].[/]");
-            AnsiConsole.MarkupLine("[dim]To use Cloud models, save key via [white]/config set <provider> <key>[/].[/]\n");
+            AnsiConsole.MarkupLine("[dim]To pull local PC models (e.g. Qwen 2.5), ensure Ollama is installed (`winget install Ollama.Ollama`).[/]");
+            AnsiConsole.MarkupLine("[dim]To use Cloud models, save API key via [white]/config set <provider> <key>[/].[/]\n");
         }
 
         while (true)
@@ -118,14 +118,13 @@ public class Program
                 if (ex.Message.Contains("connection failed") || ex.Message.Contains("failed to respond"))
                 {
                     AnsiConsole.MarkupLine("\n[yellow]Quick Fix Instructions:[/]");
-                    AnsiConsole.MarkupLine("1. Run a local PC model with Ollama:");
-                    AnsiConsole.MarkupLine("   [green]/models pull qwen2.5-coder:7b[/]");
-                    AnsiConsole.MarkupLine("   [green]/models pull deepseek-r1:7b[/]");
-                    AnsiConsole.MarkupLine("2. Or set a Cloud API key:");
-                    AnsiConsole.MarkupLine("   [green]/config set openai sk-...[/]");
-                    AnsiConsole.MarkupLine("   [green]/config set gemini AIza...[/]");
-                    AnsiConsole.MarkupLine("   [green]/config set anthropic sk-ant-...[/]");
-                    AnsiConsole.MarkupLine("   [green]/config set deepseek sk-...[/]\n");
+                    AnsiConsole.MarkupLine("[bold white]Option A: Run Local Models with Ollama[/]");
+                    AnsiConsole.MarkupLine("  1. Install Ollama: [green]winget install Ollama.Ollama[/] or download from [blue]https://ollama.com[/]");
+                    AnsiConsole.MarkupLine("  2. Start server: [green]ollama serve[/]");
+                    AnsiConsole.MarkupLine("  3. Download model: [green]/models pull qwen2.5-coder:7b[/]");
+                    AnsiConsole.MarkupLine("\n[bold white]Option B: Use Cloud AI Models Instantly[/]");
+                    AnsiConsole.MarkupLine("  Run: [green]/config set gemini <your_key>[/] or [green]/config set openai <your_key>[/]");
+                    AnsiConsole.MarkupLine("  Or set env vars ([white]$env:OPENAI_API_KEY[/], [white]$env:GEMINI_API_KEY[/]).\n");
                 }
             }
         }
@@ -171,16 +170,25 @@ public class Program
                     var ollama = providerPool.Providers.OfType<OllamaProvider>().FirstOrDefault();
                     if (ollama != null)
                     {
-                        AnsiConsole.MarkupLine($"[yellow]Starting download for local model '{targetModel}'...[/]");
-                        var success = await ollama.PullModelAsync(targetModel, msg => AnsiConsole.MarkupLine($"[dim]{msg}[/]"));
-                        if (success)
+                        AnsiConsole.MarkupLine($"[yellow]Checking local Ollama server status...[/]");
+                        if (!await ollama.EnsureServerRunningAsync())
                         {
-                            AnsiConsole.MarkupLine($"[green]Successfully pulled model '{targetModel}' to local PC![/]");
-                            providerPool.SetActiveProvider("Ollama", targetModel);
+                            AnsiConsole.MarkupLine("[red]Ollama server is not running on localhost:11434 and could not be auto-started.[/]");
+                            AnsiConsole.MarkupLine("[yellow]Install Ollama:[/] [green]winget install Ollama.Ollama[/] [yellow]or download from[/] [blue]https://ollama.com[/]\n");
                         }
                         else
                         {
-                            AnsiConsole.MarkupLine($"[red]Failed to pull model '{targetModel}'. Ensure Ollama server is running on localhost:11434.[/]");
+                            AnsiConsole.MarkupLine($"[yellow]Starting download for local model '{targetModel}'...[/]");
+                            var success = await ollama.PullModelAsync(targetModel, msg => AnsiConsole.MarkupLine($"[dim]{msg}[/]"));
+                            if (success)
+                            {
+                                AnsiConsole.MarkupLine($"[green]Successfully pulled model '{targetModel}' to local PC![/]");
+                                providerPool.SetActiveProvider("Ollama", targetModel);
+                            }
+                            else
+                            {
+                                AnsiConsole.MarkupLine($"[red]Failed to pull model '{targetModel}'. Verify model name exists in Ollama library.[/]");
+                            }
                         }
                     }
                 }

@@ -36,6 +36,36 @@ public class OllamaProvider : IModelProvider
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
     }
 
+    public async Task<bool> IsServerRunningAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(1500);
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/api/tags", cts.Token);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> EnsureServerRunningAsync(CancellationToken ct = default)
+    {
+        if (await IsServerRunningAsync(ct)) return true;
+
+        TryStartLocalServer();
+
+        for (int i = 0; i < 5; i++)
+        {
+            await Task.Delay(1000, ct);
+            if (await IsServerRunningAsync(ct)) return true;
+        }
+
+        return false;
+    }
+
     public async Task<ChatResponse> GenerateAsync(List<ChatMessage> messages, List<ToolDefinition> tools, string? model = null, CancellationToken ct = default)
     {
         var selectedModel = model ?? DefaultModel;
@@ -117,6 +147,12 @@ public class OllamaProvider : IModelProvider
 
     public async Task<bool> PullModelAsync(string modelName, Action<string> statusCallback, CancellationToken ct = default)
     {
+        if (!await EnsureServerRunningAsync(ct))
+        {
+            statusCallback("Ollama server is not running and could not be auto-started.");
+            return false;
+        }
+
         var requestUrl = $"{_baseUrl}/api/pull";
         var json = JsonSerializer.Serialize(new { name = modelName, stream = false });
 
@@ -125,7 +161,7 @@ public class OllamaProvider : IModelProvider
 
         try
         {
-            statusCallback($"Downloading local model '{modelName}' to PC...");
+            statusCallback($"Downloading local model '{modelName}' to PC via Ollama...");
             using var response = await _httpClient.SendAsync(request, ct);
             return response.IsSuccessStatusCode;
         }
@@ -139,11 +175,16 @@ public class OllamaProvider : IModelProvider
     {
         try
         {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var defaultOllamaPath = Path.Combine(localAppData, "Programs", "Ollama", "ollama.exe");
+
+            var fileName = File.Exists(defaultOllamaPath) ? defaultOllamaPath : "ollama";
+
             Process.Start(new ProcessStartInfo
             {
-                FileName = "ollama",
+                FileName = fileName,
                 Arguments = "serve",
-                UseShellExecute = true,
+                UseShellExecute = false,
                 CreateNoWindow = true
             });
             return true;
