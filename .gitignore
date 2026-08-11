@@ -1,0 +1,16 @@
+## .NET & Visual Studio Ignore Rules
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## OS & Tooling
+.DS_Store
+Thumbs.db
+*.log
+.decod/memory.json
+publish.ps1
+rebuild_repo.ps1
