@@ -12,18 +12,30 @@ public class ProviderPool
 
     public ProviderPool(ConfigManager config)
     {
-        _providers.Add(new OpenAIProvider(config.GetApiKey("openai")));
-        _providers.Add(new AnthropicProvider(config.GetApiKey("anthropic")));
-        _providers.Add(new GeminiProvider(config.GetApiKey("gemini")));
-        _providers.Add(new DeepSeekProvider(config.GetApiKey("deepseek")));
-        _providers.Add(new OllamaProvider(config.GetSetting("ollama_url") ?? "http://localhost:11434"));
-
+        ReloadProviders(config);
+        
         var preferredProviderName = config.GetSetting("default_provider") ?? "OpenAI";
         ActiveProvider = _providers.FirstOrDefault(p => p.Name.Equals(preferredProviderName, StringComparison.OrdinalIgnoreCase) && p.IsConfigured)
                          ?? _providers.FirstOrDefault(p => p.IsConfigured)
                          ?? _providers.First(p => p.Name == "Ollama");
 
         ActiveModel = config.GetSetting("default_model") ?? ActiveProvider.DefaultModel;
+    }
+
+    public void ReloadProviders(ConfigManager config)
+    {
+        _providers.Clear();
+        _providers.Add(new OpenAIProvider(config.GetApiKey("openai")));
+        _providers.Add(new AnthropicProvider(config.GetApiKey("anthropic")));
+        _providers.Add(new GeminiProvider(config.GetApiKey("gemini")));
+        _providers.Add(new DeepSeekProvider(config.GetApiKey("deepseek")));
+        _providers.Add(new OllamaProvider(config.GetSetting("ollama_url") ?? "http://localhost:11434"));
+
+        if (ActiveProvider != null)
+        {
+            var updated = _providers.FirstOrDefault(p => p.Name.Equals(ActiveProvider.Name, StringComparison.OrdinalIgnoreCase));
+            if (updated != null) ActiveProvider = updated;
+        }
     }
 
     public bool SetActiveProvider(string providerName, string? modelName = null)

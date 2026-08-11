@@ -35,6 +35,7 @@ public static class TerminalUi
         table.AddColumn("[bold yellow]Slash Command[/]");
         table.AddColumn("[bold yellow]Description[/]");
 
+        table.AddRow("[green]/config set <provider> <key>[/]", "Save API key for provider (openai, anthropic, gemini, deepseek)");
         table.AddRow("[green]/provider <name>[/]", "Switch AI provider (openai, anthropic, gemini, deepseek, ollama)");
         table.AddRow("[green]/model <name>[/]", "Set active model name (e.g. gpt-4o, claude-3-5-sonnet, gemini-2.0-flash)");
         table.AddRow("[green]/providers[/]", "List all available AI providers and configuration status");

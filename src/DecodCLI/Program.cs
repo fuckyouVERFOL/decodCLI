@@ -17,7 +17,7 @@ public class Program
             var flag = args[i].ToLowerInvariant();
             if (flag is "--version" or "-v")
             {
-                Console.WriteLine("decodCLI v1.0.0");
+                Console.WriteLine("decodCLI v1.0.1");
                 return;
             }
             if (flag is "--help" or "-h")
@@ -51,6 +51,13 @@ public class Program
         var agent = new AgentEngine(providerPool, toolRegistry, memoryManager, skillRegistry, atlas, metrics);
 
         TerminalUi.RenderBanner(providerPool.ActiveProvider.Name, providerPool.ActiveModel);
+
+        var configuredCount = providerPool.Providers.Count(p => p.IsConfigured && p.Name != "Ollama");
+        if (configuredCount == 0 && providerPool.ActiveProvider.Name == "Ollama")
+        {
+            AnsiConsole.MarkupLine("[yellow]Notice: No cloud API keys set and active provider is local Ollama.[/]");
+            AnsiConsole.MarkupLine("[dim]Set key via [white]/config set <provider> <key>[/] or ensure Ollama is running on localhost:11434.[/]\n");
+        }
 
         while (true)
         {
@@ -106,6 +113,17 @@ public class Program
             catch (Exception ex)
             {
                 AnsiConsole.MarkupLine($"[bold red]Error:[/] {Markup.Escape(ex.Message)}");
+                if (ex.Message.Contains("connection failed") || ex.Message.Contains("failed to respond"))
+                {
+                    AnsiConsole.MarkupLine("\n[yellow]Quick Fix Instructions:[/]");
+                    AnsiConsole.MarkupLine("1. To use Cloud AI models, save your API key:");
+                    AnsiConsole.MarkupLine("   [green]/config set openai sk-...[/]");
+                    AnsiConsole.MarkupLine("   [green]/config set gemini AIza...[/]");
+                    AnsiConsole.MarkupLine("   [green]/config set anthropic sk-ant-...[/]");
+                    AnsiConsole.MarkupLine("   [green]/config set deepseek sk-...[/]");
+                    AnsiConsole.MarkupLine("2. Or set environment variables ([white]$env:OPENAI_API_KEY[/], [white]$env:GEMINI_API_KEY[/], etc.).");
+                    AnsiConsole.MarkupLine("3. Or start local Ollama server ([white]ollama serve[/]).\n");
+                }
             }
         }
     }
@@ -141,6 +159,30 @@ public class Program
             case "/compact":
                 agent.CompactContext();
                 AnsiConsole.MarkupLine("[green]Context compacted successfully.[/]");
+                break;
+
+            case "/config":
+                if (arg.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var cfgParts = arg.Substring(4).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (cfgParts.Length == 2)
+                    {
+                        var prov = cfgParts[0];
+                        var key = cfgParts[1];
+                        config.SetApiKey(prov, key);
+                        providerPool.ReloadProviders(config);
+                        AnsiConsole.MarkupLine($"[green]Saved API key for provider '{prov}'. Provider pool reloaded.[/]");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[red]Usage: /config set <provider> <api_key>[/]");
+                    }
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[bold yellow]Configuration Settings:[/]");
+                    AnsiConsole.MarkupLine("Use [green]/config set <provider> <api_key>[/] to save keys for [white]openai, anthropic, gemini, deepseek[/].");
+                }
                 break;
 
             case "/provider":
