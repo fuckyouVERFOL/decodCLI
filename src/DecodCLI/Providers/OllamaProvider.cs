@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -10,14 +11,29 @@ public class OllamaProvider : IModelProvider
     private readonly string _baseUrl;
 
     public string Name => "Ollama";
-    public string DefaultModel => "qwen2.5-coder:latest";
-    public IReadOnlyList<string> SupportedModels => new[] { "qwen2.5-coder:latest", "llama3.3:latest", "deepseek-r1:latest" };
+    public string DefaultModel => "qwen2.5-coder:7b";
+    public IReadOnlyList<string> SupportedModels => new[]
+    {
+        "qwen2.5-coder:7b",
+        "qwen2.5-coder:14b",
+        "qwen2.5-coder:32b",
+        "deepseek-r1:7b",
+        "deepseek-r1:8b",
+        "deepseek-r1:14b",
+        "llama3.3:70b",
+        "llama3.1:8b",
+        "gemma2:9b",
+        "gemma2:27b",
+        "phi4:14b",
+        "mistral:7b",
+        "codestral:22b"
+    };
     public bool IsConfigured => true;
 
     public OllamaProvider(string baseUrl = "http://localhost:11434")
     {
         _baseUrl = baseUrl.TrimEnd('/');
-        _httpClient = new HttpClient();
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
     }
 
     public async Task<ChatResponse> GenerateAsync(List<ChatMessage> messages, List<ToolDefinition> tools, string? model = null, CancellationToken ct = default)
@@ -96,6 +112,45 @@ public class OllamaProvider : IModelProvider
         catch (HttpRequestException ex)
         {
             throw new Exception($"Ollama local server connection failed at {_baseUrl}. Is Ollama running? Error: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> PullModelAsync(string modelName, Action<string> statusCallback, CancellationToken ct = default)
+    {
+        var requestUrl = $"{_baseUrl}/api/pull";
+        var json = JsonSerializer.Serialize(new { name = modelName, stream = false });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            statusCallback($"Downloading local model '{modelName}' to PC...");
+            using var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public bool TryStartLocalServer()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "ollama",
+                Arguments = "serve",
+                UseShellExecute = true,
+                CreateNoWindow = true
+            });
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

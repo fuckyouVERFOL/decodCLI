@@ -36,8 +36,10 @@ public static class TerminalUi
         table.AddColumn("[bold yellow]Description[/]");
 
         table.AddRow("[green]/config set <provider> <key>[/]", "Save API key for provider (openai, anthropic, gemini, deepseek)");
+        table.AddRow("[green]/models[/]", "List local PC models catalog (Qwen 2.5, DeepSeek R1, Llama 3.3, Gemma 2)");
+        table.AddRow("[green]/models pull <name>[/]", "Download and pull local GGUF/Ollama model directly onto PC");
         table.AddRow("[green]/provider <name>[/]", "Switch AI provider (openai, anthropic, gemini, deepseek, ollama)");
-        table.AddRow("[green]/model <name>[/]", "Set active model name (e.g. gpt-4o, claude-3-5-sonnet, gemini-2.0-flash)");
+        table.AddRow("[green]/model <name>[/]", "Set active model name (e.g. qwen2.5-coder:7b, gpt-4o, claude-3-5-sonnet)");
         table.AddRow("[green]/providers[/]", "List all available AI providers and configuration status");
         table.AddRow("[green]/compact[/]", "Summarize conversation history to save context tokens");
         table.AddRow("[green]/clear[/]", "Reset conversation history");
@@ -46,6 +48,29 @@ public static class TerminalUi
         table.AddRow("[green]/exit[/]", "Exit decodCLI");
 
         AnsiConsole.Write(table);
+    }
+
+    public static void RenderLocalModelsCatalog()
+    {
+        var table = new Table().Border(TableBorder.Rounded);
+        table.AddColumn("[bold yellow]Model Name[/]");
+        table.AddColumn("[bold yellow]Category[/]");
+        table.AddColumn("[bold yellow]Min VRAM / RAM[/]");
+        table.AddColumn("[bold yellow]Description[/]");
+
+        table.AddRow("[green]qwen2.5-coder:7b[/]", "Coding", "6 GB VRAM", "Alibaba Qwen 2.5 Coder (Recommended for Coding)");
+        table.AddRow("[green]qwen2.5-coder:14b[/]", "Coding", "10 GB VRAM", "Heavyweight Qwen 2.5 Coder");
+        table.AddRow("[green]qwen2.5-coder:32b[/]", "Coding", "20 GB VRAM", "Flagship Qwen 2.5 Coding Model");
+        table.AddRow("[cyan]deepseek-r1:7b[/]", "Reasoning", "6 GB VRAM", "DeepSeek R1 Distilled Reasoning Model");
+        table.AddRow("[cyan]deepseek-r1:14b[/]", "Reasoning", "10 GB VRAM", "DeepSeek R1 High-Accuracy Reasoning");
+        table.AddRow("[white]llama3.3:70b[/]", "General", "40 GB VRAM", "Meta Llama 3.3 Flagship Open Model");
+        table.AddRow("[white]llama3.1:8b[/]", "General", "6 GB VRAM", "Lightweight Meta Llama 3.1");
+        table.AddRow("[yellow]gemma2:9b[/]", "General", "8 GB VRAM", "Google Gemma 2 9B");
+        table.AddRow("[yellow]phi4:14b[/]", "General", "10 GB VRAM", "Microsoft Phi-4 14B");
+        table.AddRow("[magenta]codestral:22b[/]", "Coding", "16 GB VRAM", "Mistral AI Codestral 22B");
+
+        AnsiConsole.Write(table);
+        AnsiConsole.MarkupLine("[dim]To download a local model to your PC, use: [white]/models pull <name>[/][/]\n");
     }
 
     public static void RenderProvidersList(IEnumerable<(string Name, bool Configured, string DefaultModel)> providers, string activeProvider)
